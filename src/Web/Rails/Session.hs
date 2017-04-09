@@ -132,8 +132,10 @@ lookupFixnum k enc m =
       Nothing
 
 -- | Lookup string for a given key and throw away encoding information.
-lookupString ::
-     ByteString -> RubyStringEncoding -> RubyObject -> Maybe ByteString
+lookupString :: ByteString
+             -> RubyStringEncoding
+             -> RubyObject
+             -> Maybe ByteString
 lookupString k enc m =
   case lookup (RIVar (RString k, enc)) m of
     Just (RIVar (RString v, _)) ->
