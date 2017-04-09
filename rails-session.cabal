@@ -19,15 +19,15 @@ Source-repository head
 library
   hs-source-dirs:      src
   exposed-modules:     Web.Rails.Session
-  build-depends:       base >= 4.7 && < 5
-                     , base64-bytestring
-                     , bytestring
-                     , cryptonite
-                     , http-types
-                     , pbkdf
-                     , ruby-marshal
-                     , string-conv
-                     , vector
+  build-depends:       base              >= 4.7 && < 5
+                     , base64-bytestring >= 1.0.0.1
+                     , bytestring        >= 0.10.6.0
+                     , cryptonite        >= 0.6
+                     , http-types        >= 0.8.6
+                     , pbkdf             >= 1.1.1.1
+                     , ruby-marshal      >= 0.1.1
+                     , string-conv       >= 0.1
+                     , vector            >= 0.10.12.3
   default-language:    Haskell2010
 
 test-suite specs

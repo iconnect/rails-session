@@ -128,6 +128,7 @@ lookupString k enc m =
 
 -- UTIL
 
+-- | Generate secret key using same cryptographic routines as Rails.
 generateSecret :: Salt -> SecretKeyBase -> SecretKey
 generateSecret (Salt salt) (SecretKeyBase secret) =
   SecretKey $! sha1PBKDF2 secret salt 1000 64

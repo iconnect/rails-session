@@ -5,7 +5,7 @@ sessions between Rails and Haskell web applications.
 
 ## Usage
 
-See [Spec.hs](https://github.com/iconnect/regex/blob/master/test/Spec.hs).
+See [Spec.hs](https://github.com/iconnect/rails-session/blob/master/test/Spec.hs).
 
 ## Contributing
 
