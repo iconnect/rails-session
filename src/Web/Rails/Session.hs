@@ -13,11 +13,15 @@ module Web.Rails.Session (
   , lookupString
   , lookupFixnum
   -- * Lifting weaker types into stronger types
-  , Cookie(..)
-  , Salt(..)
-  , SecretKeyBase(..)
+  , Cookie
+  , mkCookie
+  , Salt
+  , mkSalt
+  , SecretKeyBase
+  , mkSecretKeyBase
   ) where
 
+import              Control.Applicative ((<$>))
 import "cryptonite" Crypto.Cipher.AES (AES256)
 import "cryptonite" Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV)
 import "cryptonite" Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
@@ -26,7 +30,7 @@ import              Data.ByteString (ByteString)
 import qualified    Data.ByteString as BS
 import qualified    Data.ByteString.Base64 as B64
 import              Data.Either (Either(..), either)
-import              Data.Function ((&))
+import              Data.Function.Compat ((&))
 import              Data.Maybe (Maybe(..), fromMaybe)
 import              Data.Monoid ((<>))
 import              Data.Ruby.Marshal (RubyObject(..), RubyStringEncoding(..))
@@ -34,8 +38,8 @@ import qualified    Data.Ruby.Marshal as Ruby
 import              Data.String.Conv (toS)
 import qualified    Data.Vector as Vec
 import              Network.HTTP.Types (urlDecode)
-import              Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (<$>)
-                            , (.), (==), const, error, fst, pure, show, snd)
+import              Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (.)
+                            , (==), const, error, fst, show, snd)
 
 -- TYPES
 
@@ -66,6 +70,17 @@ newtype SecretKey =
 newtype SecretKeyBase =
   SecretKeyBase ByteString
   deriving (Show, Ord, Eq)
+
+-- SMART CONSTRUCTORS
+
+mkCookie :: ByteString -> Cookie
+mkCookie = Cookie
+
+mkSalt :: ByteString -> Salt
+mkSalt = Salt
+
+mkSecretKeyBase :: ByteString -> SecretKeyBase
+mkSecretKeyBase = SecretKeyBase
 
 -- EXPORTS
 

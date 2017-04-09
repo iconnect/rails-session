@@ -57,7 +57,7 @@ specs = do
 -- CONFIG
 
 secret :: SecretKeyBase
-secret = SecretKeyBase "development_secret_token"
+secret = mkSecretKeyBase "development_secret_token"
 
 -- VALUES
 
@@ -74,7 +74,7 @@ csrfToken = "c9kRzi8L7oj2MPI/QlqYpQ79WR6YfKTDob6PGl9V2pg="
 
 cookie :: Cookie
 cookie =
-  Cookie $
+  mkCookie $
   "T3NpYnRsWGJsZ25qL0R4MFlZdE9wZVBrZXc3VnFHMHhYMFgvemlVUjlTekZKbERXbVd2Mkwra0xxTmNOYnZaWktBQWo3T25RV3VPRkR6RU9BQ3dub2FSWExlZmZ1RUxVWG9vZjRTbWphRzBFSW5nMVJOSklPTVRPRGxKN0tvdGxhZzVlZktLTmhxc0V1a1FCWHpwNVJGTjdON0JCbjZQWHM0R1M1SWIzeUkzalhVNWdVbnd2Z2E5RlBMSXcvR0tNSHVOZ0NiK1RBTzVxcCtMK3hJa1daYW13allNb1NyN3pOUTFBQ0tRcFNEdUVJelVMZE8rVXhwM3RhcHFONWRwby9kRStNNkRUVXNQTDNKcjF0ZWpGTUE9PS0tb3NGeEJiZ1dLeFFKcFV0WXgyUytnZz09--e996601dbf39ff5ffbf6e2f23f6ddf78c5179baa"
 
 rubySession :: RubyObject
