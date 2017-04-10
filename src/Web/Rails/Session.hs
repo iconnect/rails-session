@@ -10,6 +10,8 @@ module Web.Rails.Session (
   -- * Decrypting
   , decrypt
   -- * Utilities
+  , csrfToken
+  , sessionId
   , lookupString
   , lookupFixnum
   -- * Lifting weaker types into stronger types
@@ -43,49 +45,62 @@ import              Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (.)
 
 -- TYPES
 
+-- | Wrapper around data after it has been decrypted.
 newtype DecryptedData =
   DecryptedData ByteString
   deriving (Show, Ord, Eq)
 
+-- | Wrapper around data before it has been decrypted.
 newtype EncryptedData =
   EncryptedData ByteString
   deriving (Show, Ord, Eq)
 
+-- | Wrapper around initialisation vector.
 newtype InitVector =
   InitVector ByteString
   deriving (Show, Ord, Eq)
 
+-- | Wrapper around raw cookie.
 newtype Cookie =
   Cookie ByteString
   deriving (Show, Ord, Eq)
 
+-- | Wrapper around salt.
 newtype Salt =
   Salt ByteString
   deriving (Show, Ord, Eq)
 
+-- | Wrapper around secret.
 newtype SecretKey =
   SecretKey ByteString
   deriving (Show, Ord, Eq)
 
+-- | Wrapper around secret key base.
 newtype SecretKeyBase =
   SecretKeyBase ByteString
   deriving (Show, Ord, Eq)
 
 -- SMART CONSTRUCTORS
 
+-- | Lift a cookie into a richer type.
 mkCookie :: ByteString -> Cookie
 mkCookie = Cookie
 
+-- | Lift salt into a richer type.
 mkSalt :: ByteString -> Salt
 mkSalt = Salt
 
+-- | Lifts secret into a richer type.
 mkSecretKeyBase :: ByteString -> SecretKeyBase
 mkSecretKeyBase = SecretKeyBase
 
 -- EXPORTS
 
 -- | Decode a cookie encrypted by Rails.
-decode :: Maybe Salt -> SecretKeyBase -> Cookie -> Maybe RubyObject
+decode :: Maybe Salt
+       -> SecretKeyBase
+       -> Cookie
+       -> Maybe RubyObject
 decode mbSalt secretKeyBase cookie =
   either (const Nothing) Just (decodeEither mbSalt secretKeyBase cookie)
 
@@ -108,26 +123,39 @@ decrypt :: Maybe Salt
         -> Cookie
         -> Either String DecryptedData
 decrypt mbSalt secretKeyBase cookie =
-  let salt = fromMaybe (Salt "encrypted cookie") mbSalt
+  let salt = fromMaybe defaultSalt mbSalt
       (SecretKey secret) = generateSecret salt secretKeyBase
-      key = BS.take 32 secret
       (EncryptedData encData, InitVector initVec) = prepare cookie
   in case makeIV initVec of
        Nothing ->
          Left $! "Failed to build init. vector for: " <> show initVec
-       Just initVec' ->
+       Just initVec' -> do
+         let key = BS.take 32 secret
          case (cipherInit key :: CryptoFailable AES256) of
            CryptoFailed errorMessage ->
              Left (show errorMessage)
            CryptoPassed cipher ->
              Right . DecryptedData $! cbcDecrypt cipher initVec' encData
+  where
+    defaultSalt :: Salt
+    defaultSalt = Salt "encrypted cookie"
+
+-- UTIL
+
+-- | Helper function for looking up the csrf token in a cooie.
+csrfToken :: RubyObject -> Maybe ByteString
+csrfToken = lookupString "_csrf_token" US_ASCII
+
+-- | Helper function for looking up the session id in a cookie.
+sessionId :: RubyObject -> Maybe ByteString
+sessionId = lookupString "session_id" UTF_8
 
 -- | Lookup integer for a given key.
 lookupFixnum :: ByteString -> RubyStringEncoding -> RubyObject -> Maybe Int
-lookupFixnum k enc m =
-  case lookup (RIVar (RString k, enc)) m of
-    Just (RFixnum v) ->
-      Just v
+lookupFixnum key enc rubyObject =
+  case lookup (RIVar (RString key, enc)) rubyObject of
+    Just (RFixnum val) ->
+      Just val
     _ ->
       Nothing
 
@@ -136,14 +164,14 @@ lookupString :: ByteString
              -> RubyStringEncoding
              -> RubyObject
              -> Maybe ByteString
-lookupString k enc m =
-  case lookup (RIVar (RString k, enc)) m of
-    Just (RIVar (RString v, _)) ->
-      Just v
+lookupString key enc rubyObject =
+  case lookup (RIVar (RString key, enc)) rubyObject of
+    Just (RIVar (RString val, _)) ->
+      Just val
     _ ->
       Nothing
 
--- UTIL
+-- PRIVATE
 
 -- | Generate secret key using same cryptographic routines as Rails.
 generateSecret :: Salt -> SecretKeyBase -> SecretKey
