@@ -1,7 +1,7 @@
 # rails-session
 
 Haskell library to decrypt Ruby on Rails sessions in order to allow you to share
-sessions between Rails and Haskell web applications.
+them between Ruby on Rails and Haskell web applications.
 
 ## Usage
 
