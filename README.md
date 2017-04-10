@@ -5,7 +5,21 @@ sessions between Rails and Haskell web applications.
 
 ## Usage
 
-See [Spec.hs](https://github.com/iconnect/rails-session/blob/master/test/Spec.hs).
+``` haskell
+-- | Read session id from encrypted Rails cookie on the filesystem.
+example :: FilePath -> IO (Maybe ByteString)
+example path = do
+  rawCookie <- BS.readFile path
+  let appSecret = mkSecretKeyBase "development_secret_token"
+  let cookie = mkCookie rawCookie
+  case decodeEither Nothing appSecret cookie of
+    Left _ ->
+      pure Nothing
+    Right rubyObject ->
+      pure $ sessionId rubyObject
+```
+
+See more in [Spec.hs](https://github.com/iconnect/rails-session/blob/master/test/Spec.hs).
 
 ## Contributing
 

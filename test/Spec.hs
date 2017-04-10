@@ -1,21 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-import Data.ByteString (ByteString)
-import Data.Either (isRight)
-import Data.Ruby.Marshal hiding (decodeEither)
-import Data.Vector (fromList)
-import Test.Tasty (defaultMain, testGroup)
-import Test.Tasty.Hspec (describe, it, shouldBe, shouldSatisfy, testSpec, Spec)
-import Web.Rails.Session
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import           Data.Either (isRight)
+import           Data.Monoid ((<>))
+import           Data.Ruby.Marshal hiding (decodeEither)
+import           Data.Vector (fromList)
+import           System.IO.Unsafe (unsafePerformIO)
+import           Test.Tasty (defaultMain, testGroup)
+import           Test.Tasty.Hspec (describe, it, shouldBe, shouldSatisfy, testSpec, Spec)
+import           Web.Rails.Session
+
+-- SPECS
 
 main :: IO ()
 main = do
-  x <- testSpec "Web.Rails.Session" specs
-  defaultMain (testGroup "All the Specs" [x])
+  rails4 <- testSpec "Web.Rails.Session: Rails4" $ specsFor Rails4
+  defaultMain (testGroup "All the Specs" [rails4])
 
-specs :: Spec
-specs = do
+specsFor :: Rails -> Spec
+specsFor rails = do
+  let cookie = unsafeReadCookie rails
+
   describe "decode" $ do
     it "should be a Right(..)" $ do
       let result = decodeEither Nothing secret cookie
@@ -32,20 +39,34 @@ specs = do
       let result = decrypt Nothing secret cookie
       result `shouldSatisfy` isRight
 
+  describe "csrfToken" $ do
+    it "should look up the '_csrf_token'" $ do
+      case decodeEither Nothing secret cookie of
+        Left _ -> error "lookup failed"
+        Right result ->
+          csrfToken result `shouldBe` Just csrfTokenVal
+
+  describe "sessionId" $ do
+    it "should look up the 'session_id'" $ do
+      case decodeEither Nothing secret cookie of
+        Left _ -> error "lookup failed"
+        Right result ->
+          sessionId result `shouldBe` Just sessionIdVal
+
   describe "lookupString" $ do
     it "should look up the '_csrf_token'" $ do
       case decodeEither Nothing secret cookie of
         Left _ -> error "lookup failed"
         Right result ->
           lookupString "_csrf_token" US_ASCII result `shouldBe`
-          Just csrfToken
+          Just csrfTokenVal
 
     it "should look up the 'session_id'" $ do
       case decodeEither Nothing secret cookie of
         Left _ -> error "lookup failed"
         Right result ->
           lookupString "session_id" UTF_8 result `shouldBe`
-          Just sessionId
+          Just sessionIdVal
 
     it "should look up the 'token'" $ do
       case decodeEither Nothing secret cookie of
@@ -53,6 +74,27 @@ specs = do
         Right result ->
           lookupString "token" US_ASCII result `shouldBe`
           Just authToken
+
+-- EXAMPLES
+
+example :: FilePath -> IO (Maybe ByteString)
+example path = do
+  rawCookie <- BS.readFile path
+  let appSecret = mkSecretKeyBase "development_secret_token"
+  let cookie = mkCookie rawCookie
+  case decodeEither Nothing appSecret cookie of
+    Left _ ->
+      pure Nothing
+    Right rubyObject ->
+      pure $ sessionId rubyObject
+
+-- UTIL
+
+data Rails = Rails4 deriving (Show)
+
+unsafeReadCookie :: Rails -> Cookie
+unsafeReadCookie rails = unsafePerformIO $
+  BS.readFile ("test/" <> (show rails)) >>= pure . mkCookie
 
 -- CONFIG
 
@@ -64,28 +106,21 @@ secret = mkSecretKeyBase "development_secret_token"
 authToken :: ByteString
 authToken = "GT1EYH9X8OXYqup4HwnQIvfnh59TqNys1IvukVXpXR8="
 
-sessionId :: ByteString
-sessionId = "912a0abcf3d64e0d9d2bdb601b9e8224"
+sessionIdVal :: ByteString
+sessionIdVal = "912a0abcf3d64e0d9d2bdb601b9e8224"
 
-csrfToken :: ByteString
-csrfToken = "c9kRzi8L7oj2MPI/QlqYpQ79WR6YfKTDob6PGl9V2pg="
-
--- SESSIONS
-
-cookie :: Cookie
-cookie =
-  mkCookie $
-  "T3NpYnRsWGJsZ25qL0R4MFlZdE9wZVBrZXc3VnFHMHhYMFgvemlVUjlTekZKbERXbVd2Mkwra0xxTmNOYnZaWktBQWo3T25RV3VPRkR6RU9BQ3dub2FSWExlZmZ1RUxVWG9vZjRTbWphRzBFSW5nMVJOSklPTVRPRGxKN0tvdGxhZzVlZktLTmhxc0V1a1FCWHpwNVJGTjdON0JCbjZQWHM0R1M1SWIzeUkzalhVNWdVbnd2Z2E5RlBMSXcvR0tNSHVOZ0NiK1RBTzVxcCtMK3hJa1daYW13allNb1NyN3pOUTFBQ0tRcFNEdUVJelVMZE8rVXhwM3RhcHFONWRwby9kRStNNkRUVXNQTDNKcjF0ZWpGTUE9PS0tb3NGeEJiZ1dLeFFKcFV0WXgyUytnZz09--e996601dbf39ff5ffbf6e2f23f6ddf78c5179baa"
+csrfTokenVal :: ByteString
+csrfTokenVal = "c9kRzi8L7oj2MPI/QlqYpQ79WR6YfKTDob6PGl9V2pg="
 
 rubySession :: RubyObject
 rubySession =
   RHash
     (fromList
        [ ( RIVar (RString "session_id", UTF_8)
-         , RIVar (RString sessionId, UTF_8))
+         , RIVar (RString sessionIdVal, UTF_8))
        , ( RIVar (RString "_csrf_token", US_ASCII)
          , RIVar
-             (RString csrfToken, US_ASCII))
+             (RString csrfTokenVal, US_ASCII))
        , ( RIVar (RString "token", US_ASCII)
          , RIVar (RString authToken, UTF_8))
        ])
