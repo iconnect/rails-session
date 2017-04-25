@@ -21,6 +21,8 @@ module Web.Rails.Session (
   , mkSalt
   , SecretKeyBase
   , mkSecretKeyBase
+  , DecryptedData
+  , unwrapDecryptedData
   ) where
 
 import              Control.Applicative ((<$>))
@@ -93,6 +95,12 @@ mkSalt = Salt
 -- | Lifts secret into a richer type.
 mkSecretKeyBase :: ByteString -> SecretKeyBase
 mkSecretKeyBase = SecretKeyBase
+
+-- SMART DESTRUCTORS
+
+unwrapDecryptedData :: DecryptedData -> ByteString
+unwrapDecryptedData (DecryptedData deData) =
+  deData
 
 -- EXPORTS
 
