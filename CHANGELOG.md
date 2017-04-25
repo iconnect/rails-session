@@ -1,3 +1,5 @@
+- Export DecryptedData type.
+- Add function to unwrap DecryptedData.
 - Add two additional helper functions.
 - Improve documentation.
 
