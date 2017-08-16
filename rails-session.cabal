@@ -25,6 +25,7 @@ library
                      , base64-bytestring >= 1.0.0.1
                      , bytestring        >= 0.10.6.0
                      , cryptonite        >= 0.6
+                     , memory            >= 0.14
                      , http-types        >= 0.8.6
                      , pbkdf             >= 1.1.1.1
                      , ruby-marshal      >= 0.1.1

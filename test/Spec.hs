@@ -3,13 +3,13 @@
 
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import           Data.Either (isRight)
+import           Data.Either (isRight, isLeft)
 import           Data.Monoid ((<>))
 import           Data.Ruby.Marshal hiding (decodeEither)
 import           Data.Vector (fromList)
 import           System.IO.Unsafe (unsafePerformIO)
 import           Test.Tasty (defaultMain, testGroup)
-import           Test.Tasty.Hspec (describe, it, shouldBe, shouldSatisfy, testSpec, Spec)
+import           Test.Tasty.Hspec (describe, context, it, shouldBe, shouldSatisfy, testSpec, Spec)
 import           Web.Rails.Session
 
 -- SPECS
@@ -21,23 +21,36 @@ main = do
 
 specsFor :: Rails -> Spec
 specsFor rails = do
-  let cookie = unsafeReadCookie rails
+  let cookie = unsafeReadCookie rails Valid
+      invalidSignatureCookie = unsafeReadCookie rails InvalidSignature
 
   describe "decode" $ do
-    it "should be a Right(..)" $ do
-      let result = decodeEither Nothing secret cookie
-      result `shouldSatisfy` isRight
+    context "valid cookie" $ do
+      it "should be a Right(..)" $ do
+        let result = decodeEither Nothing secret cookie
+        result `shouldSatisfy` isRight
 
-    it "should be a fully-formed Ruby object" $ do
-      case decodeEither Nothing secret cookie of
-        Left _ -> error "decode failed"
-        Right result -> do
-          result `shouldBe` rubySession
+      it "should be a fully-formed Ruby object" $ do
+        case decodeEither Nothing secret cookie of
+          Left _ -> error "decode failed"
+          Right result -> do
+            result `shouldBe` rubySession
+
+    context "invalid signature" $ do
+      it "should be a Left(..)" $ do
+        let result = decodeEither Nothing secret invalidSignatureCookie
+        result `shouldSatisfy` isLeft
 
   describe "decrypt" $ do
-    it "should be a Right(..)" $ do
-      let result = decrypt Nothing secret cookie
-      result `shouldSatisfy` isRight
+    context "valid cookie" $ do
+      it "should be a Right(..)" $ do
+        let result = decrypt Nothing secret cookie
+        result `shouldSatisfy` isRight
+
+    context "invalid signature" $ do
+      it "should be a Left(..)" $ do
+        let result = decrypt Nothing secret invalidSignatureCookie
+        result `shouldSatisfy` isLeft
 
   describe "csrfToken" $ do
     it "should look up the '_csrf_token'" $ do
@@ -92,9 +105,12 @@ example path = do
 
 data Rails = Rails4 deriving (Show)
 
-unsafeReadCookie :: Rails -> Cookie
-unsafeReadCookie rails = unsafePerformIO $
-  BS.readFile ("test/" <> (show rails)) >>= pure . mkCookie
+data CookieVariant = Valid | InvalidSignature deriving (Show)
+
+unsafeReadCookie :: Rails -> CookieVariant -> Cookie
+unsafeReadCookie rails cookieVariant = unsafePerformIO $
+  mkCookie <$>
+  BS.readFile ("test/cookies/" <> show rails <> "-" <> show cookieVariant)
 
 -- CONFIG
 
