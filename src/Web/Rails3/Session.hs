@@ -46,7 +46,7 @@ import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), I
 -- 'extractAndDecodeEither' function. The __correct__ way is given below:
 --
 -- @
--- case (extractEither "_yourapp_session" waiRequest) of
+-- case (extractEither (CookieName "_yourapp_session") waiRequest) of
 --
 -- -- no active Rails session
 -- Left _ -> ...
