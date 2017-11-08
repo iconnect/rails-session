@@ -3,10 +3,15 @@
 
 module Web.Rails3.Session
   (
+    -- $tutorial
+    -- * Decoding
     decodeEither
+    -- * Utilities
   , extractEither
   , extractAndDecodeEither
   , lookupUserIds
+    -- * Throw-away data-types
+    -- $datatypes
   , Secret(..)
   , Cookie(..)
   , CookieName(..)
@@ -33,12 +38,54 @@ import Data.List.NonEmpty as NE
 import Data.List as DL
 import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), Int, fromIntegral, Bool(..), fst)
 
+-- $tutorial
+--
+--  __Tutorial__
+--
+-- The easiest way to use this module is by simply calling the
+-- 'extractAndDecodeEither' function. The __correct__ way is given below:
+--
+-- @
+-- case (extractEither "_yourapp_session" waiRequest) of
+--
+-- -- no active Rails session
+-- Left _ -> ...
+--
+-- Right c -> case (decodeEither (Secret "yourSessionSecret") (Cookie c)) of
+--
+--   -- something went wrong in decoding the cookie. You should log "e" for debugging!
+--   Left e -> ...
+--
+--   Right obj -> case (lookupUserIds obj) of
+--
+--      -- we have a Rails session-cookie, but the user has not signed-in
+--     Nothing -> ...
+--
+--     -- signed-in user. This /may/ contain muliple userIds depending up on how you have configured Devise\/Warden in your Rails app.
+--     Just userIds -> ...
+-- @
+
+-- $datatypes
+--
+-- These data-types exist only as a way to semantically differentiate between
+-- various ByteString arguments when they are passed to functions. This is required
+-- only because Haskell doesn't have proper keywords-arguments.
+
+newtype Secret = Secret ByteString
+newtype Cookie = Cookie ByteString
+newtype CookieName = CookieName ByteString
+
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither _ (Just b) = Right b
 maybeToEither a Nothing = Left a
 
-newtype Secret = Secret ByteString
-newtype Cookie = Cookie ByteString
+-- | Decode a cookie encoded by Rails3. You can find the @Secret@ in a file
+-- called @config\/initializers\/secret_token.rb@ in your Rail3 app.
+-- 
+-- __Note:__ `decodeMaybe` has not been added on purpose. When cookie decoding
+-- fails, you would really want to know why. Please consider logging `Left`
+-- values returned by this function in your log, to save yourself some debugging
+-- time later.
 decodeEither :: Secret -> Cookie -> Either T.Text RubyObject
 decodeEither (Secret cookieSecret) (Cookie x) = extractChecksum
   >>= compareChecksum
@@ -64,7 +111,10 @@ decodeEither (Secret cookieSecret) (Cookie x) = extractChecksum
       Left l -> Left $ T.pack l
       Right r -> Right r
 
-newtype CookieName = CookieName ByteString
+-- | Utility function to extract a named cookie from a 'Wai.Request'. In most
+-- Rails3 applications the cookie name is going to be of the format
+-- @_yourappname_session@. The exact name is /usually/ present in a file named
+-- @config\/initializers\/session_store.rb@
 extractEither :: CookieName -> Request -> Either T.Text ByteString
 extractEither (CookieName cname) req = maybeToEither "[Rails3 Cookie] No cookie header in the WAI request" (lookup "Cookie" (requestHeaders req))
   >>= (return.parseCookies)
@@ -76,6 +126,9 @@ extractEither (CookieName cname) req = maybeToEither "[Rails3 Cookie] No cookie 
 -- only began in Rails4. Rails3 marshals a RubyObject and base64 encodes it to
 -- store it as a cookie. To ensure that it cannot be tamped with, it also adds
 -- an HMAC computed with the help of a secret key/value/token.
+
+-- | Utility function to extract a cookie called @CookieName@ from the
+-- 'Wai.Request', decode it using the supplied @Secret@
 extractAndDecodeEither :: (CookieName, Secret) -> Request -> Either T.Text RubyObject
 extractAndDecodeEither (cookieName, cookieSecret) req = (extractEither cookieName req) >>= ((decodeEither cookieSecret) . Cookie)
 
@@ -101,6 +154,12 @@ lookupKey key robj = (fromRuby robj :: Maybe (Map.Map (BS.ByteString, RubyString
   >>= Map.lookup key
   >>= fromRuby
 
+-- | Lookup the Warden\/Devise UserIds from a decoded cookie. __Please note,__ a
+-- cookie may contain multiple UserIds, because it /seems/ that it is possible
+-- to be logged-in as multiple users simultaneously, if you define [multiple
+-- user
+-- models](https://github.com/plataformatec/devise/wiki/How-to-Setup-Multiple-Devise-User-Models)
+-- (the underlying data-structure allows it, as well).
 lookupUserIds :: (Num a) => RubyObject -> Maybe (NonEmpty a)
 lookupUserIds robj =
   lookupKey ("warden.user.user.key", UTF_8) robj
