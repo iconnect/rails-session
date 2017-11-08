@@ -5,7 +5,7 @@ module Web.Rails3.Session
   (
     -- * Tutorial
     -- $tutorial
-    
+
     -- * Decoding
     decodeEither
     -- * Utilities
@@ -35,7 +35,6 @@ import           Data.Text.Encoding
 import           Network.HTTP.Types           (urlDecode)
 import           Network.Wai                  (Request, requestHeaders)
 import           Web.Cookie
-import Data.String.Conv
 import Data.List.NonEmpty as NE
 import Data.List as DL
 import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), Int, fromIntegral, Bool(..), fst)
@@ -131,19 +130,6 @@ extractEither (CookieName cname) req = maybeToEither "[Rails3 Cookie] No cookie 
 -- 'Wai.Request', decode it using the supplied @Secret@
 extractAndDecodeEither :: (CookieName, Secret) -> Request -> Either T.Text RubyObject
 extractAndDecodeEither (cookieName, cookieSecret) req = (extractEither cookieName req) >>= ((decodeEither cookieSecret) . Cookie)
-
-data RubyText = RubyText Text
-
-instance Rubyable Text where
-  toRuby t = RString (toSL t)
-  fromRuby (RString x) =  Just $ toSL x
-  fromRuby _ = Nothing
-
-instance Rubyable RubyText where
-  toRuby (RubyText t) = RString (encodeUtf8 t)
-  fromRuby (RString x) =  Just $ RubyText $ decodeUtf8 x
-  fromRuby _           = Nothing
-
 
 safeHead :: [a] -> Maybe a
 safeHead []    = Nothing
