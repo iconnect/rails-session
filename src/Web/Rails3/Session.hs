@@ -3,8 +3,9 @@
 
 module Web.Rails3.Session
   (
-    -- * Turorial
+    -- * Tutorial
     -- $tutorial
+    
     -- * Decoding
     decodeEither
     -- * Utilities
