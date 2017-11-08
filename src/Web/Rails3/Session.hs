@@ -3,6 +3,7 @@
 
 module Web.Rails3.Session
   (
+    -- * Turorial
     -- $tutorial
     -- * Decoding
     decodeEither
@@ -39,8 +40,6 @@ import Data.List as DL
 import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), Int, fromIntegral, Bool(..), fst)
 
 -- $tutorial
---
---  __Tutorial__
 --
 -- The easiest way to use this module is by simply calling the
 -- 'extractAndDecodeEither' function. The __correct__ way is given below:
