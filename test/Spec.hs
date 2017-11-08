@@ -11,13 +11,60 @@ import           System.IO.Unsafe (unsafePerformIO)
 import           Test.Tasty (defaultMain, testGroup)
 import           Test.Tasty.Hspec (describe, it, shouldBe, shouldSatisfy, testSpec, Spec)
 import           Web.Rails.Session
+import qualified Web.Rails3.Session as R3
+import qualified Data.List.NonEmpty as NE
 
 -- SPECS
 
 main :: IO ()
 main = do
   rails4 <- testSpec "Web.Rails.Session: Rails4" $ specsFor Rails4
-  defaultMain (testGroup "All the Specs" [rails4])
+  rails3 <- testSpec "Web.Rails3.Session: Rails4" specsForRails3
+  defaultMain (testGroup "All the Specs" [rails4, rails3])
+
+specsForRails3 :: Spec
+specsForRails3 = do
+  let cookie = R3.Cookie $ unsafePerformIO $ BS.readFile "test/Rails3"
+      secret_ = R3.Secret "test secret token for testing cookies"
+      sessionIdVal_ = "3e0d672d2d594d02c8f015388ae380a8"
+      csrfTokenVal_ = "fKui2MZV3u5jhGBIgvvrOi7lo0mD/Jge3e0LOAS19Vg="
+      userIdVal_ = 107 :: Int
+      wardenContents_ = RArray (fromList [RArray (fromList [RFixnum userIdVal_]), RIVar (RString "$2a$10$hDu7wHneNw4A.6Wg61R4vO",UTF_8)])
+      cookieContents_ = RHash (fromList
+                          [ (RIVar (RString "session_id",UTF_8), RIVar (RString sessionIdVal_,UTF_8))
+                          , (RIVar (RString "warden.user.user.key",UTF_8), wardenContents_)
+                          , (RIVar (RString "_csrf_token",US_ASCII),RIVar (RString csrfTokenVal_,US_ASCII))
+                          ])
+
+
+  describe "all tests" $ do
+    it "should be a Right(..)" $ do
+      let result = R3.decodeEither secret_ cookie
+      result `shouldSatisfy` isRight
+
+    it "should be a fully-formed Ruby object" $ do
+      case R3.decodeEither secret_ cookie of
+        Left e -> error $ "decodeEither failed:" ++ (show e)
+        Right result -> do
+          result `shouldBe` cookieContents_
+
+    it "should look up the '_csrf_token'" $ do
+      case R3.decodeEither secret_ cookie of
+        Left e -> error $ "decodeEither failed:" ++ (show e)
+        Right result ->
+          csrfToken result `shouldBe` Just csrfTokenVal_
+
+    it "should look up the 'session_id'" $ do
+      case R3.decodeEither secret_ cookie of
+        Left e -> error $ "decodeEither failed:" ++ (show e)
+        Right result ->
+          sessionId result `shouldBe` Just sessionIdVal_
+
+    it "should look up the warden user_id(s)" $ do
+      case R3.decodeEither secret_ cookie of
+        Left e -> error $ "decodeEither failed:" ++ (show e)
+        Right result ->
+          R3.lookupUserIds result `shouldBe` Just (userIdVal_ NE.:| [] :: NE.NonEmpty Int)
 
 specsFor :: Rails -> Spec
 specsFor rails = do
@@ -33,7 +80,6 @@ specsFor rails = do
         Left _ -> error "decode failed"
         Right result -> do
           result `shouldBe` rubySession
-
   describe "decrypt" $ do
     it "should be a Right(..)" $ do
       let result = decrypt Nothing secret cookie
@@ -90,7 +136,7 @@ example path = do
 
 -- UTIL
 
-data Rails = Rails4 deriving (Show)
+data Rails = Rails4 | Rails3 deriving (Show)
 
 unsafeReadCookie :: Rails -> Cookie
 unsafeReadCookie rails = unsafePerformIO $
