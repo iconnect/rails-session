@@ -27,12 +27,16 @@ module Web.Rails.Session (
 
 import              Control.Applicative ((<$>))
 import "cryptonite" Crypto.Cipher.AES (AES256)
+import "cryptonite" Crypto.MAC.HMAC (HMAC, hmac)
+import "cryptonite" Crypto.Hash.Algorithms (SHA1)
 import "cryptonite" Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV)
 import "cryptonite" Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
 import              Crypto.PBKDF.ByteString (sha1PBKDF2)
 import              Data.ByteString (ByteString)
 import qualified    Data.ByteString as BS
 import qualified    Data.ByteString.Base64 as B64
+import qualified    Data.ByteArray as BA
+import qualified    Data.ByteArray.Encoding as BA
 import              Data.Either (Either(..), either)
 import              Data.Function.Compat ((&))
 import              Data.Maybe (Maybe(..), fromMaybe)
@@ -80,6 +84,11 @@ newtype SecretKey =
 -- | Wrapper around secret key base.
 newtype SecretKeyBase =
   SecretKeyBase ByteString
+  deriving (Show, Ord, Eq)
+
+-- | Wrapper around raw signature.
+newtype Signature =
+  Signature ByteString
   deriving (Show, Ord, Eq)
 
 -- SMART CONSTRUCTORS
@@ -130,20 +139,21 @@ decrypt :: Maybe Salt
         -> SecretKeyBase
         -> Cookie
         -> Either String DecryptedData
-decrypt mbSalt secretKeyBase cookie =
+decrypt mbSalt secretKeyBase cookie = do
   let salt = fromMaybe defaultSalt mbSalt
       (SecretKey secret) = generateSecret salt secretKeyBase
-      (EncryptedData encData, InitVector initVec) = prepare cookie
-  in case makeIV initVec of
-       Nothing ->
-         Left $! "Failed to build init. vector for: " <> show initVec
-       Just initVec' -> do
-         let key = BS.take 32 secret
-         case (cipherInit key :: CryptoFailable AES256) of
-           CryptoFailed errorMessage ->
-             Left (show errorMessage)
-           CryptoPassed cipher ->
-             Right . DecryptedData $! cbcDecrypt cipher initVec' encData
+  (EncryptedData encData, InitVector initVec) <- prepare cookie secretKeyBase
+
+  case makeIV initVec of
+    Nothing ->
+      Left $! "Failed to build init. vector for: " <> show initVec
+    Just initVec' -> do
+      let key = BS.take 32 secret
+      case (cipherInit key :: CryptoFailable AES256) of
+        CryptoFailed errorMessage ->
+          Left (show errorMessage)
+        CryptoPassed cipher ->
+          Right . DecryptedData $! cbcDecrypt cipher initVec' encData
   where
     defaultSalt :: Salt
     defaultSalt = Salt "encrypted cookie"
@@ -187,13 +197,25 @@ generateSecret (Salt salt) (SecretKeyBase secret) =
   SecretKey $! sha1PBKDF2 secret salt 1000 64
 
 -- | Prepare a cookie for decryption.
-prepare :: Cookie -> (EncryptedData, InitVector)
-prepare (Cookie cookie) =
-  urlDecode True cookie
-  & (fst . split)
-  & base64decode
-  & split
-  & (\(x, y) -> (EncryptedData (base64decode x), InitVector (base64decode y)))
+prepare :: Cookie -> SecretKeyBase -> Either String (EncryptedData, InitVector)
+prepare (Cookie cookie) secretKeyBase = do
+  let (signedBase64, signatureBase16) = split (urlDecode True cookie)
+      (SecretKey secret) = generateSecret salt secretKeyBase
+
+  signature :: ByteString <- BA.convertFromBase BA.Base16 signatureBase16
+
+  let digest :: HMAC SHA1
+      digest = hmac secret signedBase64
+
+  verified <- 
+    if BA.constEq digest signature
+      then Right (base64decode signedBase64)
+      else Left ("Invalid HMAC " <> show (BA.convertToBase BA.Base16 digest :: ByteString)
+          <> " " <> show signatureBase16)
+
+  let (encryptedDataBase64, ivBase64) = split verified
+  Right ( EncryptedData (base64decode encryptedDataBase64)
+        , InitVector (base64decode ivBase64) )
   where
     base64decode :: ByteString -> ByteString
     base64decode = B64.decodeLenient
@@ -202,7 +224,11 @@ prepare (Cookie cookie) =
     separator = "--"
 
     split :: ByteString -> (ByteString, ByteString)
-    split = BS.breakSubstring separator
+    split s = let (l, r) = BS.breakSubstring separator s
+              in (l, BS.drop (BS.length separator) r)
+
+    salt :: Salt
+    salt = Salt "signed encrypted cookie"
 
 -- | Lookup value for a given key.
 lookup :: RubyObject -> RubyObject -> Maybe RubyObject
