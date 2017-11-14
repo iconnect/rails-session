@@ -1,5 +1,7 @@
 # rails-session
 
+[![Build Status](https://travis-ci.org/iconnect/rails-session.svg?branch=issue-3)](https://travis-ci.org/iconnect/rails-session)
+
 Haskell library to decrypt Ruby on Rails sessions in order to allow you to share
 them between Ruby on Rails and Haskell web applications.
 
