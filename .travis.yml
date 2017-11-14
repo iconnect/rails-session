@@ -1,0 +1,23 @@
+sudo: false
+
+# Caching so the next build will be fast too.
+cache:
+  directories:
+    - $HOME/.stack
+
+# Download and unpack the stack executable.
+before_install:
+  - mkdir -p ~/.local/bin
+  - export PATH=$HOME/.local/bin:$PATH
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+  - stack config set system-ghc --global true
+  - export PATH=/opt/ghc/7.10.2/bin:$PATH
+
+# Avoid timeouts.
+install:
+  - travis_wait stack --no-terminal --skip-ghc-check setup
+  - travis_wait stack --no-terminal --skip-ghc-check test --only-snapshot
+
+# Run the tests.
+script:
+  - stack --no-terminal --skip-ghc-check test --fast
