@@ -8,15 +8,13 @@ module Web.Rails3.Session
 
     -- * Decoding
     decodeEither
+  , decode
     -- * Utilities
-  , extractEither
-  , extractAndDecodeEither
   , lookupUserIds
     -- * Throw-away data-types
     -- $datatypes
   , Secret(..)
   , Cookie(..)
-  , CookieName(..)
   )
 where
 
@@ -30,14 +28,10 @@ import qualified Data.Map.Strict              as Map
 import           Data.Ruby.Marshal            as Marshal hiding (decode, decodeEither)
 import qualified Data.Ruby.Marshal            as Marshal (decodeEither)
 import           Data.Ruby.Marshal.RubyObject
-import           Data.Text                    as T
-import           Data.Text.Encoding
-import           Network.HTTP.Types           (urlDecode)
-import           Network.Wai                  (Request, requestHeaders)
-import           Web.Cookie
+import Network.HTTP.Types (urlDecode)
 import Data.List.NonEmpty as NE
 import Data.List as DL
-import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), Int, fromIntegral, Bool(..), fst)
+import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), Int, fromIntegral, Bool(..), fst, String, either, id, const)
 
 -- $tutorial
 --
@@ -72,31 +66,36 @@ import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), I
 
 newtype Secret = Secret ByteString
 newtype Cookie = Cookie ByteString
-newtype CookieName = CookieName ByteString
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither _ (Just b) = Right b
 maybeToEither a Nothing = Left a
 
+-- | Decode a cookie encoded by Rails3. Please read the documentation of
+-- 'decodeEither' for more details, and consider using 'decodeEither' instead of
+-- 'decode'
+decode :: Secret -> Cookie -> Maybe RubyObject
+decode s c = either (const Nothing) Just $ decodeEither s c
+
 -- | Decode a cookie encoded by Rails3. You can find the @Secret@ in a file
 -- called @config\/initializers\/secret_token.rb@ in your Rail3 app.
--- 
+--
 -- __Note:__ `decodeMaybe` has not been added on purpose. When cookie decoding
 -- fails, you would really want to know why. Please consider logging `Left`
 -- values returned by this function in your log, to save yourself some debugging
 -- time later.
-decodeEither :: Secret -> Cookie -> Either T.Text RubyObject
-decodeEither (Secret cookieSecret) (Cookie x) = extractChecksum
+decodeEither :: Secret -> Cookie -> Either String RubyObject
+decodeEither (Secret cookieSecret) (Cookie x) =
+  extractChecksum
   >>= compareChecksum
-  -- Marshal.decodeEither returns an (Either String RubyObject). Need to convert it to (Either Text RubyObject)
-  >>= convertLeftToText.(Marshal.decodeEither)
+  >>= Marshal.decodeEither
   where
-    extractChecksum :: Either Text (Digest SHA1)
+    extractChecksum :: Either String (Digest SHA1)
     extractChecksum = maybeToEither
                       "[Rails3 Cookie] Illegal checksum in cookie. Wasn't able to extract a valid HMAC checksum out of it."
                       (Hash.digestFromByteString $ fst $ (B16.decode hexChecksum))
 
-    compareChecksum :: Digest SHA1 -> Either Text ByteString
+    compareChecksum :: Digest SHA1 -> Either String ByteString
     compareChecksum checksum = if (computedChecksum == checksum) then (Right $ B64.decodeLenient b64) else (Left "[Rails3 Cookie] Checksum doesn't match")
 
     computedChecksum :: Digest SHA1
@@ -106,18 +105,6 @@ decodeEither (Secret cookieSecret) (Cookie x) = extractChecksum
                          in (a, BS.drop (BS.length delimiter) b)
     delimiter = "--"
 
-    convertLeftToText e = case e of
-      Left l -> Left $ T.pack l
-      Right r -> Right r
-
--- | Utility function to extract a named cookie from a 'Wai.Request'. In most
--- Rails3 applications the cookie name is going to be of the format
--- @_yourappname_session@. The exact name is /usually/ present in a file named
--- @config\/initializers\/session_store.rb@
-extractEither :: CookieName -> Request -> Either T.Text ByteString
-extractEither (CookieName cname) req = maybeToEither "[Rails3 Cookie] No cookie header in the WAI request" (lookup "Cookie" (requestHeaders req))
-  >>= (return.parseCookies)
-  >>= (maybeToEither (T.concat ["[Rails3 Cookie] Cookie named '", decodeUtf8 cname, "' not found"])) . (lookup cname)
 
 -- NOTE: Please refer to
 -- http://blog.bigbinary.com/2013/03/19/cookies-on-rails.html to understand how
@@ -125,11 +112,6 @@ extractEither (CookieName cname) req = maybeToEither "[Rails3 Cookie] No cookie 
 -- only began in Rails4. Rails3 marshals a RubyObject and base64 encodes it to
 -- store it as a cookie. To ensure that it cannot be tamped with, it also adds
 -- an HMAC computed with the help of a secret key/value/token.
-
--- | Utility function to extract a cookie called @CookieName@ from the
--- 'Wai.Request', decode it using the supplied @Secret@
-extractAndDecodeEither :: (CookieName, Secret) -> Request -> Either T.Text RubyObject
-extractAndDecodeEither (cookieName, cookieSecret) req = (extractEither cookieName req) >>= ((decodeEither cookieSecret) . Cookie)
 
 safeHead :: [a] -> Maybe a
 safeHead []    = Nothing
