@@ -35,11 +35,14 @@ import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), I
 
 -- $tutorial
 --
--- The easiest way to use this module is by simply calling the
--- 'extractAndDecodeEither' function. The __correct__ way is given below:
+-- Here's how to decode a Rail3 session/auth cookie using 'wai' & 'cookie' package.
 --
 -- @
--- case (extractEither (CookieName "_yourapp_session") waiRequest) of
+-- import Network.Wai (requestHeaders)
+-- import Web.Cookie (parseCookies)
+-- ...
+--
+-- case (fmap (lookup "_yourapp_session") $ fmap parseCookies $ lookup "Cookie" $ requestHeaders waiRequest) of
 --
 -- -- no active Rails session
 -- Left _ -> ...
