@@ -35,6 +35,7 @@ See more in [Spec.hs](https://github.com/iconnect/rails-session/blob/master/test
 
 - [@filib](https://github.com/filib)
 - [@adinapoli](https://github.com/adinapoli)
+- [@saurabhnanda](https://github.com/saurabhnanda)
 
 ## Similar Libraries
 
