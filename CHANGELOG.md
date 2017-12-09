@@ -1,3 +1,7 @@
+## 0.1.2.0
+
+- Add Rails3 support.
+
 ## 0.1.1.0
 
 - Export DecryptedData type.

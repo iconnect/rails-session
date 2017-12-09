@@ -1,5 +1,5 @@
 name:                rails-session
-version:             0.1.1.0
+version:             0.1.2.0
 synopsis:            Decrypt Ruby on Rails sessions in Haskell
 description:         Please see README.md
 homepage:            http://github.com/iconnect/rails-session#readme
