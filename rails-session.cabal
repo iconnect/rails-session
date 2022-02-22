@@ -46,6 +46,7 @@ test-suite specs
   build-depends:       base
                      , bytestring
                      , filepath
+                     , hspec
                      , semigroups
                      , rails-session
                      , ruby-marshal
