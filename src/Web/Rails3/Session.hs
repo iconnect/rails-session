@@ -94,9 +94,10 @@ decodeEither (Secret cookieSecret) (Cookie x) =
   >>= Marshal.decodeEither
   where
     extractChecksum :: Either String (Digest SHA1)
-    extractChecksum = maybeToEither
-                      "[Rails3 Cookie] Illegal checksum in cookie. Wasn't able to extract a valid HMAC checksum out of it."
-                      (Hash.digestFromByteString $ fst $ (B16.decode hexChecksum))
+    extractChecksum = do
+      decoded <- B16.decode hexChecksum
+      maybeToEither "[Rails3 Cookie] Illegal checksum in cookie. Wasn't able to extract a valid HMAC checksum out of it."
+                    (Hash.digestFromByteString decoded)
 
     compareChecksum :: Digest SHA1 -> Either String ByteString
     compareChecksum checksum = if (computedChecksum == checksum) then (Right $ B64.decodeLenient b64) else (Left "[Rails3 Cookie] Checksum doesn't match")
