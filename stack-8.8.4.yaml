@@ -1,7 +1,8 @@
-resolver: lts-18.26
+resolver: lts-16.31
 allow-newer: true
 packages:
 - '.'
 extra-deps:
   - pbkdf-1.1.1.1
   - ruby-marshal-0.2.0
+  - base16-bytestring-1.0.1.0

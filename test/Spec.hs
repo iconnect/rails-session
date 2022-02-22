@@ -9,7 +9,8 @@ import           Data.Ruby.Marshal hiding (decodeEither)
 import           Data.Vector (fromList)
 import           System.IO.Unsafe (unsafePerformIO)
 import           Test.Tasty (defaultMain, testGroup)
-import           Test.Tasty.Hspec (describe, it, shouldBe, shouldSatisfy, testSpec, Spec)
+import           Test.Tasty.Hspec (testSpec)
+import           Test.Hspec (describe, it, shouldBe, shouldSatisfy, Spec)
 import           Web.Rails.Session
 import qualified Web.Rails3.Session as R3
 import qualified Data.List.NonEmpty as NE
