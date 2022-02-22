@@ -1,3 +1,8 @@
+## 0.1.3.0
+
+- Update to newer GHC version.
+- Switch from TravisCI to GitHub Actions.
+
 ## 0.1.2.0
 
 - Add Rails3 support.
