@@ -3,7 +3,7 @@
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Web.Rails.Session (
+module Web.Rails4.Session (
   -- * Decoding
     decode
   , decodeEither
@@ -14,93 +14,27 @@ module Web.Rails.Session (
   , sessionId
   , lookupString
   , lookupFixnum
-  -- * Lifting weaker types into stronger types
-  , Cookie
-  , mkCookie
-  , Salt
-  , mkSalt
-  , SecretKeyBase
-  , mkSecretKeyBase
-  , DecryptedData
-  , unwrapDecryptedData
   ) where
 
 import              Control.Applicative ((<$>))
-import "cryptonite" Crypto.Cipher.AES (AES256)
-import "cryptonite" Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV)
-import "cryptonite" Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
 import              Crypto.PBKDF.ByteString (sha1PBKDF2)
 import              Data.ByteString (ByteString)
-import qualified    Data.ByteString as BS
-import qualified    Data.ByteString.Base64 as B64
 import              Data.Either (Either(..), either)
 import              Data.Function.Compat ((&))
 import              Data.Maybe (Maybe(..), fromMaybe)
 import              Data.Monoid ((<>))
 import              Data.Ruby.Marshal (RubyObject(..), RubyStringEncoding(..))
-import qualified    Data.Ruby.Marshal as Ruby
 import              Data.String.Conv (toS)
-import qualified    Data.Vector as Vec
 import              Network.HTTP.Types (urlDecode)
-import              Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (.)
-                            , (==), const, error, fst, show, snd)
-
--- TYPES
-
--- | Wrapper around data after it has been decrypted.
-newtype DecryptedData =
-  DecryptedData ByteString
-  deriving (Show, Ord, Eq)
-
--- | Wrapper around data before it has been decrypted.
-newtype EncryptedData =
-  EncryptedData ByteString
-  deriving (Show, Ord, Eq)
-
--- | Wrapper around initialisation vector.
-newtype InitVector =
-  InitVector ByteString
-  deriving (Show, Ord, Eq)
-
--- | Wrapper around raw cookie.
-newtype Cookie =
-  Cookie ByteString
-  deriving (Show, Ord, Eq)
-
--- | Wrapper around salt.
-newtype Salt =
-  Salt ByteString
-  deriving (Show, Ord, Eq)
-
--- | Wrapper around secret.
-newtype SecretKey =
-  SecretKey ByteString
-  deriving (Show, Ord, Eq)
-
--- | Wrapper around secret key base.
-newtype SecretKeyBase =
-  SecretKeyBase ByteString
-  deriving (Show, Ord, Eq)
-
--- SMART CONSTRUCTORS
-
--- | Lift a cookie into a richer type.
-mkCookie :: ByteString -> Cookie
-mkCookie = Cookie
-
--- | Lift salt into a richer type.
-mkSalt :: ByteString -> Salt
-mkSalt = Salt
-
--- | Lifts secret into a richer type.
-mkSecretKeyBase :: ByteString -> SecretKeyBase
-mkSecretKeyBase = SecretKeyBase
-
--- SMART DESTRUCTORS
-
-unwrapDecryptedData :: DecryptedData -> ByteString
-unwrapDecryptedData (DecryptedData deData) =
-  deData
+import              Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (.) , (==), const, error, fst, show, snd)
+import              Web.Rails.Session.Types
+import "cryptonite" Crypto.Cipher.AES (AES256)
+import "cryptonite" Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV)
+import "cryptonite" Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
+import qualified    Data.ByteString as BS
+import qualified    Data.ByteString.Base64 as B64
+import qualified    Data.Ruby.Marshal as Ruby
+import qualified    Data.Vector as Vec
 
 -- EXPORTS
 
