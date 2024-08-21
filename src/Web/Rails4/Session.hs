@@ -1,6 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Web.Rails4.Session (
@@ -28,9 +27,9 @@ import              Data.String.Conv (toS)
 import              Network.HTTP.Types (urlDecode)
 import              Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (.) , (==), const, error, fst, show, snd)
 import              Web.Rails.Session.Types
-import "cryptonite" Crypto.Cipher.AES (AES256)
-import "cryptonite" Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV)
-import "cryptonite" Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
+import              Crypto.Cipher.AES (AES256)
+import              Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV)
+import              Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
 import qualified    Data.ByteString as BS
 import qualified    Data.ByteString.Base64 as B64
 import qualified    Data.Ruby.Marshal as Ruby

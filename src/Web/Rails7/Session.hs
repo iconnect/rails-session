@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
 
@@ -12,32 +11,32 @@ module Web.Rails7.Session (
   , decrypt
   ) where
 
-import              Control.Applicative ((<$>))
-import              Control.Monad
-import              Crypto.PBKDF.ByteString (sha1PBKDF2, sha256PBKDF2)
-import              Data.Aeson qualified as JSON
-import              Data.Bifunctor
-import              Data.ByteArray qualified as BA
-import              Data.ByteString (ByteString)
-import              Data.ByteString qualified as BS
-import              Data.ByteString.Base64 qualified as B64
-import              Data.ByteString.Char8 qualified as C8
-import              Data.ByteString.Lazy qualified as BL
-import              Data.Either (Either(..), either)
-import              Data.Function.Compat ((&))
-import              Data.Maybe (Maybe(..), fromMaybe)
-import              Data.Monoid ((<>))
-import              Data.Ruby.Marshal (RubyObject(..), RubyStringEncoding(..))
-import              Data.String.Conv (toS)
-import              Data.Vector qualified as Vec
-import              Network.HTTP.Types (urlDecode)
-import              Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (.) , (==), const, error, fst, show, snd)
-import              Prelude hiding (lookup)
-import              Web.Rails.Session.Types
-import "cryptonite" Crypto.Cipher.AES (AES256)
-import "cryptonite" Crypto.Cipher.AESGCMSIV qualified as AESGCM
-import "cryptonite" Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV, aeadInit, AEADMode (..), aeadSimpleDecrypt, AuthTag(..))
-import "cryptonite" Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
+import Control.Applicative ((<$>))
+import Control.Monad
+import Crypto.PBKDF.ByteString (sha1PBKDF2, sha256PBKDF2)
+import Data.Aeson qualified as JSON
+import Data.Bifunctor
+import Data.ByteArray qualified as BA
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
+import Data.ByteString.Base64 qualified as B64
+import Data.ByteString.Char8 qualified as C8
+import Data.ByteString.Lazy qualified as BL
+import Data.Either (Either(..), either)
+import Data.Function.Compat ((&))
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Monoid ((<>))
+import Data.Ruby.Marshal (RubyObject(..), RubyStringEncoding(..))
+import Data.String.Conv (toS)
+import Data.Vector qualified as Vec
+import Network.HTTP.Types (urlDecode)
+import Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (.) , (==), const, error, fst, show, snd)
+import Prelude hiding (lookup)
+import Web.Rails.Session.Types
+import Crypto.Cipher.AES (AES256)
+import Crypto.Cipher.AESGCMSIV qualified as AESGCM
+import Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV, aeadInit, AEADMode (..), aeadSimpleDecrypt, AuthTag(..))
+import Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
 
 data DecodingError
   = InvalidCookieFormat

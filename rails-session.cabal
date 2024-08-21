@@ -12,6 +12,7 @@ category:            Web
 build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  CHANGELOG.md
+tested-with:         GHC ==9.4.8 || ==9.6.4
 
 Source-repository head
   type: git
@@ -31,7 +32,7 @@ library
                      , bytestring
                      , bytestring        >= 0.10.6.0
                      , containers
-                     , cryptonite        >= 0.6
+                     , crypton           >= 1.0.0
                      , http-types        >= 0.8.6
                      , memory
                      , pbkdf             >= 1.1.1.1
