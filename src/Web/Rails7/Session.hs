@@ -7,6 +7,7 @@ module Web.Rails7.Session (
   -- * Decoding
     decode
   , decodeEither
+  , DecodingError(..)
   -- * Decrypting
   , decrypt
   ) where
