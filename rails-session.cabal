@@ -49,6 +49,7 @@ test-suite specs
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       aeson
+                     , aeson-qq
                      , base
                      , bytestring
                      , filepath

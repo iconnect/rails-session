@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# HLINT ignore "Use <&>" #-}
 
 import           Data.ByteString (ByteString)
@@ -11,7 +12,9 @@ import           Test.Hspec (describe, it, shouldBe, shouldSatisfy, Spec)
 import           Test.Tasty (defaultMain, testGroup)
 import           Test.Tasty.Hspec (testSpec)
 import           Web.Rails.Session.Types
+import           Data.Aeson.QQ
 import qualified Data.ByteString as BS
+import qualified Data.Aeson      as JSON
 import qualified Data.List.NonEmpty as NE
 import qualified Web.Rails3.Session as R3
 import qualified Web.Rails4.Session as R4
@@ -118,56 +121,15 @@ specsFor cookie = do
 
 specsForRails7 :: Cookie -> Spec
 specsForRails7 cookie = do
-  describe "decode" $ it "should be a Right(..)" $ do
-    let result = R7.decodeEither Nothing secret cookie
-    result `shouldSatisfy` isRight
+  describe "decode" $ do
+    it "should be a Right(..)" $ do
+      let result = R7.decodeEither Nothing secret cookie
+      result `shouldSatisfy` isRight
 
-  --  it "should be a fully-formed Ruby object" $ do
-  --    case R7.decodeEither Nothing secret cookie of
-  --      Left _ -> error "decode failed"
-  --      Right result -> do
-  --        result `shouldBe` rubySession
-  --describe "decrypt" $ do
-  --  it "should be a Right(..)" $ do
-  --    let result = R7.decrypt Nothing secret cookie
-  --    result `shouldSatisfy` isRight
-
-  --describe "csrfToken" $ do
-  --  it "should look up the '_csrf_token'" $ do
-  --    case R7.decodeEither Nothing secret cookie of
-  --      Left _ -> error "lookup failed"
-  --      Right result ->
-  --        R4.csrfToken result `shouldBe` Just csrfTokenVal
-
-  --describe "sessionId" $ do
-  --  it "should look up the 'session_id'" $ do
-  --    case R7.decodeEither Nothing secret cookie of
-  --      Left _ -> error "lookup failed"
-  --      Right result ->
-  --        R4.sessionId result `shouldBe` Just sessionIdVal
-
-  --describe "lookupString" $ do
-  --  it "should look up the '_csrf_token'" $ do
-  --    case R7.decodeEither Nothing secret cookie of
-  --      Left _ -> error "lookup failed"
-  --      Right result ->
-  --        R7.lookupString "_csrf_token" US_ASCII result `shouldBe`
-  --        Just csrfTokenVal
-
-  --  it "should look up the 'session_id'" $ do
-  --    case R7.decodeEither Nothing secret cookie of
-  --      Left _ -> error "lookup failed"
-  --      Right result ->
-  --        R7.lookupString "session_id" UTF_8 result `shouldBe`
-  --        Just sessionIdVal
-
-  --  it "should look up the 'token'" $ do
-  --    case R7.decodeEither Nothing secret cookie of
-  --      Left _ -> error "lookup failed"
-  --      Right result ->
-  --        R7.lookupString "token" US_ASCII result `shouldBe`
-  --        Just authToken
-
+    it "should be a fully-formed JSON (Rails) object" $ do
+      case R7.decodeEither Nothing secret cookie of
+        Left x -> fail (show x)
+        Right result -> result `shouldBe` rubyJSONObject
 
 -- EXAMPLES
 
@@ -221,3 +183,6 @@ rubySession =
        , ( RIVar (RString "token", US_ASCII)
          , RIVar (RString authToken, UTF_8))
        ])
+
+rubyJSONObject :: JSON.Value
+rubyJSONObject = [aesonQQ|{"_rails":{"message":"eyJzZXNzaW9uX2lkIjoiMjY1ZWY5NmVjOTIxMmM3ZGJhOWRjZTM3OGRmNDBjYjIiLCJsb2NhbGUiOiJlbl9HQiIsImJyYW5kaW5nIjoiaXJpc19jb25uZWN0IiwiY3VycmVudF9vcmdhbml6YXRpb25faWQiOjEsIl9jc3JmX3Rva2VuIjoiMTlGMkVlSmRrdUM4TzJxM2tTX3gtVnV1cWd5cWc0N2tXVVFFYW9Nbm5UNCIsInRva2VuIjoidzNSM2Q1ekJHdFFDdkw4eEZtUDlsY0g5TkVQWFprMzhTaUtBMURpWGEwUT0iLCJjdXJyZW50X3VzZXJfaWQiOjEsIm91dHN0YW5kaW5nX2V1bGFzIjpbXX0=","exp":null,"pur":"cookie._athena_new_session"}}|]

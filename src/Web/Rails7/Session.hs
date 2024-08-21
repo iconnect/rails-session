@@ -43,9 +43,6 @@ import "cryptonite" Crypto.Cipher.AESGCMSIV qualified as AESGCM
 import "cryptonite" Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV, aeadInit, AEADMode (..), aeadSimpleDecrypt, AuthTag(..))
 import "cryptonite" Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
 
-import Debug.Trace (traceShowId, traceShow)
-import qualified Data.ByteString.Base16 as B16
-
 data DecodingError
   = InvalidCookieFormat
   | InvalidAuthTagSize Int
