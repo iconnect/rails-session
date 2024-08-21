@@ -1,0 +1,7 @@
+resolver: lts-21.22
+allow-newer: true
+packages:
+- '.'
+extra-deps:
+  - pbkdf-1.1.1.1
+  - ruby-marshal-0.2.0

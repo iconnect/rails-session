@@ -13,8 +13,6 @@ module Web.Rails3.Session
   , lookupUserIds
     -- * Throw-away data-types
     -- $datatypes
-  , Secret(..)
-  , Cookie(..)
   )
 where
 
@@ -28,6 +26,7 @@ import qualified Data.Map.Strict              as Map
 import           Data.Ruby.Marshal            as Marshal hiding (decode, decodeEither)
 import qualified Data.Ruby.Marshal            as Marshal (decodeEither)
 import           Data.Ruby.Marshal.RubyObject
+import           Web.Rails.Session.Types
 import Network.HTTP.Types (urlDecode)
 import Data.List.NonEmpty as NE
 import Data.List as DL
@@ -66,9 +65,6 @@ import Prelude (Either(..), (>>=), (.), (==), ($), Maybe(..), return, Num(..), I
 -- These data-types exist only as a way to semantically differentiate between
 -- various ByteString arguments when they are passed to functions. This is required
 -- only because Haskell doesn't have proper keywords-arguments.
-
-newtype Secret = Secret ByteString
-newtype Cookie = Cookie ByteString
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither _ (Just b) = Right b
