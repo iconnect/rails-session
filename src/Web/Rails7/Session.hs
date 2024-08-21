@@ -18,7 +18,7 @@ module Web.Rails7.Session (
 
 import              Control.Applicative ((<$>))
 import              Control.Monad
-import              Crypto.PBKDF.ByteString (sha1PBKDF2)
+import              Crypto.PBKDF.ByteString (sha1PBKDF2, sha256PBKDF2)
 import              Data.Aeson qualified as JSON
 import              Data.Bifunctor
 import              Data.ByteArray qualified as BA
@@ -44,6 +44,7 @@ import "cryptonite" Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV, aeadIni
 import "cryptonite" Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
 
 import Debug.Trace (traceShowId, traceShow)
+import qualified Data.ByteString.Base16 as B16
 
 data DecodingError
   = InvalidCookieFormat
@@ -87,23 +88,22 @@ decrypt :: Maybe Salt
 decrypt mbSalt secretKeyBase cookie = do
   (EncryptedData encData, InitVector ivVec, autTag) <- prepare cookie
   nonce <- doCryptoStep $ AESGCM.nonce ivVec
-
-  let key = BS.take 32 secret
-  cipher <- doCryptoStep (cipherInit key :: CryptoFailable AES256)
-  case AESGCM.decrypt cipher nonce (mempty :: ByteString) encData autTag of
+  cipher <- doCryptoStep (cipherInit cipherKey :: CryptoFailable AES256)
+  aad <- doCryptoStep (aeadInit AEAD_GCM cipher ivVec)
+  case aeadSimpleDecrypt aad (mempty :: ByteString) encData autTag of
     Nothing -> Left DecryptionIsEmpty
     Just dt -> Right $ DecryptedData dt
 
   where
 
-    secret :: ByteString
-    (SecretKey secret) = generateSecret salt secretKeyBase
+    cipherKey :: ByteString
+    (SecretKey cipherKey) = generateSecret salt secretKeyBase
 
     salt :: Salt
     salt = fromMaybe defaultSalt mbSalt
 
     defaultSalt :: Salt
-    defaultSalt = Salt "encrypted cookie"
+    defaultSalt = Salt "authenticated encrypted cookie"
 
 doCryptoStep :: CryptoFailable a -> Either DecodingError a
 doCryptoStep = \case
@@ -147,13 +147,13 @@ lookupString key enc rubyObject =
 -- | Generate secret key using same cryptographic routines as Rails.
 generateSecret :: Salt -> SecretKeyBase -> SecretKey
 generateSecret (Salt salt) (SecretKeyBase secret) =
-  SecretKey $! sha1PBKDF2 secret salt 1000 64
+  SecretKey $! sha256PBKDF2 secret salt 1000 32
 
 -- | Prepare a cookie for decryption.
 -- /NOTE/: Unlike Rails4, Rails7 cookies contains a final auth tag at the end.
 prepare :: Cookie -> Either DecodingError (EncryptedData, InitVector, AuthTag)
 prepare (Cookie cookie) =
-  case tokenise "--" (urlDecode True cookie) of
+  case tokenise "--" cookie of
     [encDataB64, ivVectorB64, autTagB64]
      -> do
        encData  <- base64decode encDataB64
