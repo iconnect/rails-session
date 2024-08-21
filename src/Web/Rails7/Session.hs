@@ -9,11 +9,6 @@ module Web.Rails7.Session (
   , decodeEither
   -- * Decrypting
   , decrypt
-  -- * Utilities
-  , csrfToken
-  , sessionId
-  , lookupString
-  , lookupFixnum
   ) where
 
 import              Control.Applicative ((<$>))
@@ -76,8 +71,8 @@ decodeEither mbSalt secretKeyBase cookie = do
     Right (DecryptedData deData) ->
       first InvalidJSON $ JSON.eitherDecode (BL.fromStrict deData)
 
--- | Decrypts a cookie encrypted by Rails. Use this if you are using a
--- serialisation format other than Ruby's Marshal format.
+-- | Decrypts a cookie encrypted by Rails. It returns the encrypted
+-- data as a 'ByteString' blob, which is your responsibility to deserialise.
 decrypt :: Maybe Salt
         -> SecretKeyBase
         -> Cookie
@@ -107,37 +102,6 @@ doCryptoStep = \case
   CryptoFailed errorMessage ->
     Left (InvalidCryptoStep $ show errorMessage)
   CryptoPassed a -> Right a
-
--- UTIL
-
--- | Helper function for looking up the csrf token in a cooie.
-csrfToken :: RubyObject -> Maybe ByteString
-csrfToken = lookupString "_csrf_token" US_ASCII
-
--- | Helper function for looking up the session id in a cookie.
-sessionId :: RubyObject -> Maybe ByteString
-sessionId = lookupString "session_id" UTF_8
-
--- | Lookup integer for a given key.
-lookupFixnum :: ByteString -> RubyStringEncoding -> RubyObject -> Maybe Int
-lookupFixnum key enc rubyObject =
-  case lookup (RIVar (RString key, enc)) rubyObject of
-    Just (RFixnum val) ->
-      Just val
-    _ ->
-      Nothing
-
--- | Lookup string for a given key and throw away encoding information.
-lookupString :: ByteString
-             -> RubyStringEncoding
-             -> RubyObject
-             -> Maybe ByteString
-lookupString key enc rubyObject =
-  case lookup (RIVar (RString key, enc)) rubyObject of
-    Just (RIVar (RString val, _)) ->
-      Just val
-    _ ->
-      Nothing
 
 -- PRIVATE
 
@@ -183,8 +147,3 @@ separator = "--"
 tokenise :: ByteString -> ByteString -> [ByteString]
 tokenise x y = h : if BS.null t then [] else tokenise x (BS.drop (BS.length x) t)
     where (h,t) = BS.breakSubstring x y
-
--- | Lookup value for a given key.
-lookup :: RubyObject -> RubyObject -> Maybe RubyObject
-lookup key (RHash vec) = snd <$> Vec.find (\element -> fst element == key) vec
-lookup _ _ = Nothing
