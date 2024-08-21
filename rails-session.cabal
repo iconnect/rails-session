@@ -13,6 +13,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  CHANGELOG.md
 tested-with:         GHC ==9.4.8 || ==9.6.4
+data-files:          test/Rails3 test/Rails4 test/Rails7
 
 Source-repository head
   type: git
