@@ -7,14 +7,24 @@ module Web.Rails7.Session (
     decode
   , decodeEither
   , DecodingError(..)
+  -- * Decoding syntactic sugar and facilities
+  , RailsDecryptedCookie(..)
+  , DecryptedCookieData(..)
+  , parseCookieData
   -- * Decrypting
   , decrypt
   ) where
 
 import Control.Applicative ((<$>))
+import Control.Lens
 import Control.Monad
+import Crypto.Cipher.AES (AES256)
+import Crypto.Cipher.AESGCMSIV qualified as AESGCM
+import Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV, aeadInit, AEADMode (..), aeadSimpleDecrypt, AuthTag(..))
+import Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
 import Crypto.PBKDF.ByteString (sha1PBKDF2, sha256PBKDF2)
 import Data.Aeson qualified as JSON
+import Data.Aeson.Lens
 import Data.Bifunctor
 import Data.ByteArray qualified as BA
 import Data.ByteString (ByteString)
@@ -28,15 +38,32 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid ((<>))
 import Data.Ruby.Marshal (RubyObject(..), RubyStringEncoding(..))
 import Data.String.Conv (toS)
+import Data.Text.Encoding qualified as TE
 import Data.Vector qualified as Vec
 import Network.HTTP.Types (urlDecode)
 import Prelude (Bool(..), Eq, Int, Ord, Show, String, ($!), (.) , (==), const, error, fst, show, snd)
 import Prelude hiding (lookup)
 import Web.Rails.Session.Types
-import Crypto.Cipher.AES (AES256)
-import Crypto.Cipher.AESGCMSIV qualified as AESGCM
-import Crypto.Cipher.Types (cbcDecrypt, cipherInit, makeIV, aeadInit, AEADMode (..), aeadSimpleDecrypt, AuthTag(..))
-import Crypto.Error (CryptoFailable(CryptoFailed, CryptoPassed))
+import qualified Data.Aeson.Types as JSON
+
+newtype RailsDecryptedCookie
+  = RailsDecryptedCookie
+  { _rails :: DecryptedCookieData }
+  deriving Show
+
+-- | NOTE(adn) decoding only the fields we need.
+newtype DecryptedCookieData
+  = DecryptedCookieData
+  { dcd_message :: JSON.Value
+  }
+  deriving Show
+
+instance JSON.FromJSON RailsDecryptedCookie where
+  parseJSON = JSON.withObject "RailsDecryptedCookie" $ \o -> do
+    (payload :: JSON.Value) <- o JSON..: "_rails"
+    case JSON.eitherDecode (BL.fromStrict $ B64.decodeLenient $ TE.encodeUtf8 $ payload ^. key "message" . _String) of
+      Left e        -> fail e
+      Right msgBlob -> pure $ RailsDecryptedCookie $ DecryptedCookieData msgBlob
 
 data DecodingError
   = InvalidCookieFormat
@@ -58,6 +85,13 @@ decode :: Maybe Salt
        -> Maybe JSON.Value
 decode mbSalt secretKeyBase cookie =
   either (const Nothing) Just (decodeEither mbSalt secretKeyBase cookie)
+
+parseCookieData :: JSON.Value -> Either String DecryptedCookieData
+parseCookieData jsonBlob = case JSON.parseEither JSON.parseJSON jsonBlob of
+  Left e
+    -> Left e
+  Right (RailsDecryptedCookie payload)
+    -> Right payload
 
 -- | Decode a cookie encrypted by Rails and retain some error information on failure.
 decodeEither :: Maybe Salt
